@@ -176,7 +176,7 @@ function get_theme_config_value($dir, $key='*')
     $tconfig = array();
 
     $theme_config_file = G5_PATH.'/'.G5_THEME_DIR.'/'.$dir.'/theme.config.php';
-    if(is_file) {
+    if(is_file($theme_config_file)) {
         include($theme_config_file);
 
         if($key == '*') {
@@ -355,6 +355,70 @@ function get_admin_token()
     return $token;
 }
 
+// 관리자가 자동등록방지를 사용해야 할 경우
+function get_admin_captcha_by($type='get'){
+    
+    $captcha_name = 'ss_admin_use_captcha';
+
+    if($type === 'remove'){
+        set_session($captcha_name, '');
+    }
+
+    return get_session($captcha_name);
+}
+
+//input value 에서 xss 공격 filter 역할을 함 ( 반드시 input value='' 타입에만 사용할것 )
+function get_sanitize_input($s, $is_html=false){
+
+    if(!$is_html){
+        $s = strip_tags($s);
+    }
+
+    $s = htmlspecialchars($s, ENT_QUOTES, 'utf-8');
+
+    return $s;
+}
+
+function check_log_folder($log_path){
+
+    if( is_writable($log_path) ){
+
+        // 아파치 서버인 경우 웹에서 해당 폴더 접근 막기
+        $htaccess_file = $log_path.'/.htaccess';
+        if ( !file_exists( $htaccess_file ) ) {
+            if ( $handle = @fopen( $htaccess_file, 'w' ) ) {
+                fwrite( $handle, 'Order deny,allow' . "\n" );
+                fwrite( $handle, 'Deny from all' . "\n" );
+                fclose( $handle );
+            }
+        }
+        
+        // 아파치 서버인 경우 해당 디렉토리 파일 목록 안보이게 하기
+        $index_file = $log_path . '/index.php';
+        if ( !file_exists( $index_file ) ) {
+            if ( $handle = @fopen( $index_file, 'w' ) ) {
+                fwrite( $handle, '' );
+                fclose( $handle );
+            }
+        }
+    }
+    
+    // txt 파일과 log 파일을 조회하여 30일이 지난 파일은 삭제합니다.
+    $txt_files = glob($log_path.'/*.txt');
+    $log_files = glob($log_path.'/*.log');
+    
+    $del_files = array_merge($txt_files, $log_files);
+
+    if( $del_files && is_array($del_files) ){
+        foreach ($del_files as $del_file) {
+            $filetime = filemtime($del_file);
+            // 30일이 지난 파일을 삭제
+            if($filetime && $filetime < (G5_SERVER_TIME - 2592000)) {
+                @unlink($del_file);
+            }
+        }
+    }
+}
 
 // POST로 넘어온 토큰과 세션에 저장된 토큰 비교
 function check_admin_token()
@@ -382,16 +446,44 @@ function admin_referer_check($return=false)
     }
 
     $p = @parse_url($referer);
+
     $host = preg_replace('/:[0-9]+$/', '', $_SERVER['HTTP_HOST']);
+    $msg = '';
 
     if($host != $p['host']) {
         $msg = '올바른 방법으로 이용해 주십시오.';
-
-        if($return)
-            return $msg;
-        else
-            alert($msg, G5_URL);
     }
+
+    if( $p['path'] && ! preg_match( '/\/'.preg_quote(G5_ADMIN_DIR).'\//i', $p['path'] ) ){
+        $msg = '올바른 방법으로 이용해 주십시오';
+    }
+
+    if( $msg ){
+        if($return) {
+            return $msg;
+        } else {
+            alert($msg, G5_URL);
+        }
+    }
+}
+
+function admin_check_xss_params($params){
+
+    if( ! $params ) return;
+
+    foreach( $params as $key=>$value ){
+
+        if ( empty($value) ) continue;
+
+        if( is_array($value) ){
+            admin_check_xss_params($value);
+        } else if ( preg_match('/<\s?[^\>]*\/?\s?>/i', $value) && (preg_match('/script.*?\/script/ius', $value) || preg_match('/onload=.*/ius', $value)) ){
+            alert('요청 쿼리에 잘못된 스크립트문장이 있습니다.\\nXSS 공격일수도 있습니다.');
+            die();
+        }
+    }
+
+    return;
 }
 
 // 접근 권한 검사
@@ -416,7 +508,7 @@ else if ($is_admin != 'super')
 }
 
 // 관리자의 아이피, 브라우저와 다르다면 세션을 끊고 관리자에게 메일을 보낸다.
-$admin_key = md5($member['mb_datetime'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['HTTP_USER_AGENT']);
+$admin_key = md5($member['mb_datetime'] . get_real_client_ip() . $_SERVER['HTTP_USER_AGENT']);
 if (get_session('ss_mb_key') !== $admin_key) {
 
     session_destroy();
@@ -435,12 +527,17 @@ unset($auth_menu);
 unset($menu);
 unset($amenu);
 $tmp = dir(G5_ADMIN_PATH);
+$menu_files = array();
 while ($entry = $tmp->read()) {
     if (!preg_match('/^admin.menu([0-9]{3}).*\.php$/', $entry, $m))
         continue;  // 파일명이 menu 으로 시작하지 않으면 무시한다.
 
     $amenu[$m[1]] = $entry;
-    include_once(G5_ADMIN_PATH.'/'.$entry);
+    $menu_files[] = G5_ADMIN_PATH.'/'.$entry;
+}
+@asort($menu_files);
+foreach($menu_files as $file){
+    include_once($file);
 }
 @ksort($amenu);
 
@@ -451,6 +548,12 @@ if (isset($sfl))  $arr_query[] = 'sfl='.$sfl;
 if (isset($stx))  $arr_query[] = 'stx='.$stx;
 if (isset($page)) $arr_query[] = 'page='.$page;
 $qstr = implode("&amp;", $arr_query);
+
+if ( isset($_REQUEST) && $_REQUEST ){
+    if( admin_referer_check(true) ){
+        admin_check_xss_params($_REQUEST);
+    }
+}
 
 // 관리자에서는 추가 스크립트는 사용하지 않는다.
 //$config['cf_add_script'] = '';

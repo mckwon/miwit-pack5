@@ -143,7 +143,7 @@ if( $cert_enc_use == "Y" )
         $sql = " select mb_id from {$g5['member_table']} where mb_id <> '{$member['mb_id']}' and mb_dupinfo = '{$mb_dupinfo}' ";
         $row = sql_fetch($sql);
         if ($row['mb_id']) {
-            alert_close("입력하신 본인학인 정보로 가입된 내역이 존재합니다.\\n회원아이디 : ".$row['mb_id']);
+            alert_close("입력하신 본인확인 정보로 가입된 내역이 존재합니다.\\n회원아이디 : ".$row['mb_id']);
         }
 
         // hash 데이터
@@ -173,7 +173,14 @@ if( $cert_enc_use == "Y" )
 else if( $cert_enc_use != "Y" )
 {
     // 암호화 인증 안함
-    alert_close("휴대폰 본인확인을 취소 하셨습니다.");
+    if( G5_IS_MOBILE ){
+        echo '<script>'.PHP_EOL;
+        echo 'window.parent.$("#cert_info").css("display", "");'.PHP_EOL;
+        echo 'window.parent.$("#kcp_cert" ).css("display", "none");'.PHP_EOL;
+        echo '</script>'.PHP_EOL;
+    } else {
+        alert_close("휴대폰 본인확인을 취소 하셨습니다.");
+    }
     exit;
 }
 

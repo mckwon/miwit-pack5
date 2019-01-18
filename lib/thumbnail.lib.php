@@ -25,29 +25,31 @@ function get_list_thumbnail($bo_table, $wr_id, $thumb_width, $thumb_height, $is_
         $matches = get_editor_image($write['wr_content'], false);
         $edt = true;
 
-        for($i=0; $i<count($matches[1]); $i++)
-        {
-            // 이미지 path 구함
-            $p = parse_url($matches[1][$i]);
-            if(strpos($p['path'], '/'.G5_DATA_DIR.'/') != 0)
-                $data_path = preg_replace('/^\/.*\/'.G5_DATA_DIR.'/', '/'.G5_DATA_DIR, $p['path']);
-            else
-                $data_path = $p['path'];
+        if(isset($matches[1]) && is_array($matches[1])){
+            for($i=0; $i<count($matches[1]); $i++)
+            {
+                // 이미지 path 구함
+                $p = parse_url($matches[1][$i]);
+                if(strpos($p['path'], '/'.G5_DATA_DIR.'/') != 0)
+                    $data_path = preg_replace('/^\/.*\/'.G5_DATA_DIR.'/', '/'.G5_DATA_DIR, $p['path']);
+                else
+                    $data_path = $p['path'];
 
-            $srcfile = G5_PATH.$data_path;
+                $srcfile = G5_PATH.$data_path;
 
-            if(preg_match("/\.({$config['cf_image_extension']})$/i", $srcfile) && is_file($srcfile)) {
-                $size = @getimagesize($srcfile);
-                if(empty($size))
-                    continue;
+                if(preg_match("/\.({$config['cf_image_extension']})$/i", $srcfile) && is_file($srcfile)) {
+                    $size = @getimagesize($srcfile);
+                    if(empty($size))
+                        continue;
 
-                $filename = basename($srcfile);
-                $filepath = dirname($srcfile);
+                    $filename = basename($srcfile);
+                    $filepath = dirname($srcfile);
 
-                preg_match("/alt=[\"\']?([^\"\']*)[\"\']?/", $matches[0][$i], $malt);
-                $alt = get_text($malt[1]);
+                    preg_match("/alt=[\"\']?([^\"\']*)[\"\']?/", $matches[0][$i], $malt);
+                    $alt = get_text($malt[1]);
 
-                break;
+                    break;
+                }
             }
         }
     }
@@ -284,6 +286,7 @@ function thumbnail($filename, $source_path, $target_path, $thumb_width, $thumb_h
 
     $is_large = true;
     // width, height 설정
+
     if($thumb_width) {
         if(!$thumb_height) {
             $thumb_height = round(($thumb_width * $size[1]) / $size[0]);
@@ -349,14 +352,16 @@ function thumbnail($filename, $source_path, $target_path, $thumb_width, $thumb_h
             $dst = imagecreatetruecolor($dst_w, $dst_h);
             $bgcolor = imagecolorallocate($dst, 255, 255, 255); // 배경색
 
-            if($src_w > $src_h) {
-                $tmp_h = round(($dst_w * $src_h) / $src_w);
-                $dst_y = round(($dst_h - $tmp_h) / 2);
-                $dst_h = $tmp_h;
-            } else {
-                $tmp_w = round(($dst_h * $src_w) / $src_h);
-                $dst_x = round(($dst_w - $tmp_w) / 2);
-                $dst_w = $tmp_w;
+            if ( !((defined('G5_USE_THUMB_RATIO') && false === G5_USE_THUMB_RATIO) || (defined('G5_THEME_USE_THUMB_RATIO') && false === G5_THEME_USE_THUMB_RATIO)) ){
+                if($src_w > $src_h) {
+                    $tmp_h = round(($dst_w * $src_h) / $src_w);
+                    $dst_y = round(($dst_h - $tmp_h) / 2);
+                    $dst_h = $tmp_h;
+                } else {
+                    $tmp_w = round(($dst_h * $src_w) / $src_h);
+                    $dst_x = round(($dst_w - $tmp_w) / 2);
+                    $dst_w = $tmp_w;
+                }
             }
 
             if($size[2] == 3) {
@@ -382,21 +387,63 @@ function thumbnail($filename, $source_path, $target_path, $thumb_width, $thumb_h
         $dst = imagecreatetruecolor($dst_w, $dst_h);
         $bgcolor = imagecolorallocate($dst, 255, 255, 255); // 배경색
 
-        if($src_w < $dst_w) {
-            if($src_h >= $dst_h) {
-                $dst_x = round(($dst_w - $src_w) / 2);
-                $src_h = $dst_h;
+        if ( ((defined('G5_USE_THUMB_RATIO') && false === G5_USE_THUMB_RATIO) || (defined('G5_THEME_USE_THUMB_RATIO') && false === G5_THEME_USE_THUMB_RATIO)) ){
+            //이미지 썸네일을 비율 유지하지 않습니다.  (5.2.6 버전 이하에서 처리된 부분과 같음)
+
+            if($src_w < $dst_w) {
+                if($src_h >= $dst_h) {
+                    $dst_x = round(($dst_w - $src_w) / 2);
+                    $src_h = $dst_h;
+                    if( $dst_w > $src_w ){
+                        $dst_w = $src_w;
+                    }
+                } else {
+                    $dst_x = round(($dst_w - $src_w) / 2);
+                    $dst_y = round(($dst_h - $src_h) / 2);
+                    $dst_w = $src_w;
+                    $dst_h = $src_h;
+                }
             } else {
-                $dst_x = round(($dst_w - $src_w) / 2);
-                $dst_y = round(($dst_h - $src_h) / 2);
-                $dst_w = $src_w;
-                $dst_h = $src_h;
+                if($src_h < $dst_h) {
+                    $dst_y = round(($dst_h - $src_h) / 2);
+                    $dst_h = $src_h;
+                    $src_w = $dst_w;
+                }
             }
+
         } else {
-            if($src_h < $dst_h) {
-                $dst_y = round(($dst_h - $src_h) / 2);
-                $dst_h = $src_h;
-                $src_w = $dst_w;
+            //이미지 썸네일을 비율 유지하며 썸네일 생성합니다.
+            if($src_w < $dst_w) {
+                if($src_h >= $dst_h) {
+                    if( $src_h > $src_w ){
+                        $tmp_w = round(($dst_h * $src_w) / $src_h);
+                        $dst_x = round(($dst_w - $tmp_w) / 2);
+                        $dst_w = $tmp_w;
+                    } else {
+                        $dst_x = round(($dst_w - $src_w) / 2);
+                        $src_h = $dst_h;
+                        if( $dst_w > $src_w ){
+                            $dst_w = $src_w;
+                        }
+                    }
+                } else {
+                    $dst_x = round(($dst_w - $src_w) / 2);
+                    $dst_y = round(($dst_h - $src_h) / 2);
+                    $dst_w = $src_w;
+                    $dst_h = $src_h;
+                }
+            } else {
+                if($src_h < $dst_h) {
+                    if( $src_w > $dst_w ){
+                        $tmp_h = round(($dst_w * $src_h) / $src_w);
+                        $dst_y = round(($dst_h - $tmp_h) / 2);
+                        $dst_h = $tmp_h;
+                    } else {
+                        $dst_y = round(($dst_h - $src_h) / 2);
+                        $dst_h = $src_h;
+                        $src_w = $dst_w;
+                    }
+                }
             }
         }
 

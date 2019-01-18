@@ -28,7 +28,14 @@ while ($row = sql_fetch_array($result))
     $wr_num = $row['wr_num'];
     for ($i=0; $i<count($_POST['chk_bo_table']); $i++)
     {
-        $move_bo_table = $_POST['chk_bo_table'][$i];
+        $move_bo_table = preg_replace('/[^a-z0-9_]/i', '', $_POST['chk_bo_table'][$i]);
+
+        // 취약점 18-0075 참고
+        $sql = "select * from {$g5['board_table']} where bo_table = '".sql_real_escape_string($move_bo_table)."' ";
+        $move_board = sql_fetch($sql);
+        // 존재하지 않다면
+        if( !$move_board['bo_table'] ) continue;
+
         $move_write_table = $g5['write_prefix'] . $move_bo_table;
 
         $src_dir = G5_DATA_PATH.'/file/'.$bo_table; // 원본 디렉토리
@@ -115,8 +122,10 @@ while ($row = sql_fetch_array($result))
                     if ($row3['bf_file'])
                     {
                         // 원본파일을 복사하고 퍼미션을 변경
-                        @copy($src_dir.'/'.$row3['bf_file'], $dst_dir.'/'.$row3['bf_file']);
-                        @chmod($dst_dir/$row3['bf_file'], G5_FILE_PERMISSION);
+                        // 제이프로님 코드제안 적용
+                        $copy_file_name = ($bo_table !== $move_bo_table) ? $row3['bf_file'] : $row2['wr_id'].'_copy_'.$insert_id.'_'.$row3['bf_file'];
+                        @copy($src_dir.'/'.$row3['bf_file'], $dst_dir.'/'.$copy_file_name);
+                        @chmod($dst_dir.'/'.$row3['bf_file'], G5_FILE_PERMISSION);
                     }
 
                     $sql = " insert into {$g5['board_file_table']}
@@ -124,7 +133,7 @@ while ($row = sql_fetch_array($result))
                                      wr_id = '$insert_id',
                                      bf_no = '{$row3['bf_no']}',
                                      bf_source = '".addslashes($row3['bf_source'])."',
-                                     bf_file = '{$row3['bf_file']}',
+                                     bf_file = '$copy_file_name',
                                      bf_download = '{$row3['bf_download']}',
                                      bf_content = '".addslashes($row3['bf_content'])."',
                                      bf_filesize = '{$row3['bf_filesize']}',

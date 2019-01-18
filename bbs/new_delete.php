@@ -69,7 +69,7 @@ for($i=0;$i<count($_POST['chk_bn_id']);$i++)
 
         if ($pressed == '선택내용삭제') {
             // 게시글 내용만 삭제
-            sql_query(" update $write_table set wr_subject = '{$g5['time_ymdhis']} - 본인 요청으로 인한 삭제 (냉무) ☆', wr_content = '', wr_name='본인요청삭제☆' where wr_id = '{$write['wr_id']}' ");
+            sql_query(" update $write_table set wr_subject =  '".G5_TIME_YMDHIS." - 본인 요청으로 인한 삭제 (냉무) ☆', wr_content = '', wr_name='본인요청삭제☆' where wr_id = '{$write['wr_id']}' ");
         } else {
             // 게시글 삭제
             sql_query(" delete from $write_table where wr_parent = '{$write['wr_id']}' ");
@@ -128,7 +128,7 @@ for($i=0;$i<count($_POST['chk_bn_id']);$i++)
         $row = sql_fetch($sql);
 
         // 원글의 코멘트 숫자를 감소
-        sql_query(" update $write_table set wr_comment = wr_comment - 1, wr_last = '$row[wr_last]' where wr_id = '{$write['wr_parent']}' ");
+        sql_query(" update $write_table set wr_comment = wr_comment - 1, wr_last = '{$row['wr_last']}' where wr_id = '{$write['wr_parent']}' ");
 
         // 코멘트 숫자 감소
         sql_query(" update {$g5['board_table']} set bo_count_comment = bo_count_comment - 1 where bo_table = '$bo_table' ");

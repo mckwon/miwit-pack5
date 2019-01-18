@@ -67,17 +67,33 @@ if (!get_session($ss_name))
         insert_point($member['mb_id'], $board['bo_download_point'], "{$board['bo_subject']} $wr_id 파일 다운로드", $bo_table, $wr_id, "다운로드");
     }
 
+    set_session($ss_name, TRUE);
+}
+
+// 이미 다운로드 받은 파일인지를 검사한 후 다운로드 카운트 증가 ( SIR 그누위즈 님 코드 제안 )
+$ss_name = 'ss_down_'.$bo_table.'_'.$wr_id.'_'.$no;
+if (!get_session($ss_name))
+{
     // 다운로드 카운트 증가
     $sql = " update {$g5['board_file_table']} set bf_download = bf_download + 1 where bo_table = '$bo_table' and wr_id = '$wr_id' and bf_no = '$no' ";
     sql_query($sql);
-
-    set_session($ss_name, TRUE);
+    // 다운로드 카운트를 증가시키고 세션을 생성
+    $_SESSION[$ss_name] = true;
 }
 
 $g5['title'] = '다운로드 &gt; '.conv_subject($write['wr_subject'], 255);
 
-//$original = urlencode($file['bf_source']);
-$original = iconv('utf-8', 'euc-kr', $file['bf_source']); // SIR 잉끼님 제안코드
+//파일명에 한글이 있는 경우
+/*
+if(preg_match("/[\xA1-\xFE][\xA1-\xFE]/", $file['bf_source'])){
+    // 2015.09.02 날짜의 파이어폭스에서 인코딩된 문자 그대로 출력되는 문제가 발생됨, 2018.12.11 날짜의 파이어폭스에서는 해당 현상이 없으므로 해당 코드를 사용 안합니다.
+    $original = iconv('utf-8', 'euc-kr', $file['bf_source']); // SIR 잉끼님 제안코드
+} else {
+    $original = urlencode($file['bf_source']);
+}
+*/
+
+$original = urlencode($file['bf_source']);
 
 @include_once($board_skin_path.'/download.tail.skin.php');
 
@@ -86,6 +102,11 @@ if(preg_match("/msie/i", $_SERVER['HTTP_USER_AGENT']) && preg_match("/5\.5/", $_
     header("content-length: ".filesize("$filepath"));
     header("content-disposition: attachment; filename=\"$original\"");
     header("content-transfer-encoding: binary");
+} else if (preg_match("/Firefox/i", $_SERVER['HTTP_USER_AGENT'])){
+    header("content-type: file/unknown");
+    header("content-length: ".filesize("$filepath"));
+    header("content-disposition: attachment; filename=\"".basename($file['bf_source'])."\"");
+    header("content-description: php generated data");
 } else {
     header("content-type: file/unknown");
     header("content-length: ".filesize("$filepath"));
