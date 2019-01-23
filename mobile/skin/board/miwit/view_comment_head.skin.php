@@ -146,7 +146,7 @@ if ($file[0][source] && !$file[0][view] && !$file[0][movie]) {
 
 $tmp = array();
 $tmp['file'] = $file;
-$row[content] = preg_replace("/{이미지\:([0-9]+)[:]?([^}]*)}/ie", "mw_view_image(\$tmp, '\\1', '\\2')", $row[content]);
+$row[content] = preg_replace_callback("/{이미지\:([0-9]+)[:]?([^}]*)}/i", create_function ('$arg', 'global $tmp; return "mw_view_image(\'$tmp\', \'$arg[1]\', \'$arg[2]\')";'), $row[content]);
 
 if ($row[wr_singo] && $row[wr_singo] >= $mw_basic[cf_singo_number] && $mw_basic[cf_singo_write_block]) {
     $content = " <div class='singo_info'> 신고가 접수된 게시물입니다. (신고수 : {$row[wr_singo]}회)<br/>";

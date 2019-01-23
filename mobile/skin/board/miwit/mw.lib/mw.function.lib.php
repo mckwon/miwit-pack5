@@ -1479,8 +1479,11 @@ function bc_code($str, $is_content=1, $only_admin=0) {
             $str = preg_replace_callback("/include\(\"([^\"]+)\"\)/i", $callback, $str);
         }
 
-        $str = preg_replace('/\[soundcloud url="([^"]+)".*params="([^"]+)".*\]/ie', "mw_soundcloud('\\1', '\\2')", $str);
-        $str = preg_replace('/\[soundcloud url=.*<A HREF="([^"]+)".*<\/A>.*params=&#034;([^;]+); [^\]]+\]/ie', "mw_soundcloud('\\1', '\\2')", $str);
+        $conv_soundcloud_tag = create_function ('$arg', '
+            return "mw_soundcloud(\'$arg[1]\', \'$arg[2]\')";
+        ');
+        $str = preg_replace_callback('/\[soundcloud url="([^"]+)".*params="([^"]+)".*\]/i', "conv_soundcloud_tag", $str);
+        $str = preg_replace_callback('/\[soundcloud url=.*<A HREF="([^"]+)".*<\/A>.*params=&#034;([^;]+); [^\]]+\]/i', "conv_soundcloud_tag", $str);
     }
     if ($only_admin) {
         $callback = create_function('$arg', 'return mw_pay_banner($arg[1], $arg[2]);');
@@ -4426,3 +4429,14 @@ function mw_jump($bo_table, $wr_id)
     }
 }
 
+function conv_rich_content_image($matches)
+{
+    global $view;
+    return mw_view_image($view, $matches[1], $matches[2]);
+}
+
+function conv_rich_content_movie($matches)
+{
+    global $view;
+    return mw_view_movie($view, $matches[1], $matches[2]);
+}

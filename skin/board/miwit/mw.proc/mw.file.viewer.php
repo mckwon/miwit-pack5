@@ -188,11 +188,11 @@ else {
 }
 
 if (!$mw_basic['cf_zzal'])
-    $view[rich_content] = @preg_replace("/{이미지\:([0-9]+)[:]?([^}]*)}/ie", "mw_view_image(\$view, '\\1', '\\2')", $view[content]);
+    $view[rich_content] = @preg_replace_callback("/{이미지\:([0-9]+)[:]?([^}]*)}/i", "conv_rich_content_image", $view[content]);
 else
-    $view[rich_content] = @preg_replace("/{이미지\:([0-9]+)[:]?([^}]*)}/ie", "", $view[content]);
+    $view[rich_content] = @preg_replace_callback("/{이미지\:([0-9]+)[:]?([^}]*)}/i", create_function('$args','return "";'), $view[content]);
 
-$view[rich_content] = preg_replace("/{동영상\:([0-9]+)[:]?([^}]*)}/ie", "mw_view_movie(\$view, '\\1', '\\2')", $view[rich_content]);
+$view[rich_content] = preg_replace_callback("/{동영상\:([0-9]+)[:]?([^}]*)}/i", "conv_rich_content_movie", $view[rich_content]);
 
 if ($mw_basic[cf_no_img_ext]) { // 이미지 확대 사용 안함
     $view[rich_content] = preg_replace("/name='target_resize_image\[\]' onclick='image_window\(this\)'/iUs", "", $view[rich_content]);

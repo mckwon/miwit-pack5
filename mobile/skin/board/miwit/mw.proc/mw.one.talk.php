@@ -646,7 +646,7 @@ if ($mw_basic[cf_type] == "gall")
         if ($mw_basic[cf_type] == "desc") {
             echo "</div>";
             $desc = strip_tags($list[$i][wr_content]);
-            $desc = preg_replace("/{이미지\:([0-9]+)[:]?([^}]*)}/ie", "", $desc);
+            $desc = preg_replace_callback("/{이미지\:([0-9]+)[:]?([^}]*)}/i", create_function('$args','return "";'), $desc);
             $desc = cut_str($desc, $mw_basic[cf_desc_len]);
             echo "<div class=mw_basic_list_desc> $desc </div>";
         }

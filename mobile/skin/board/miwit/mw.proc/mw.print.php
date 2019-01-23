@@ -176,7 +176,7 @@ if (strstr($sfl, "content"))
 $view[content] = preg_replace("/(\<img )([^\>]*)(\>)/i", "\\1 name='target_resize_image[]' onclick='image_window(this)' style='cursor:pointer;' \\2 \\3", $view[content]);
 
 //$view[rich_content] = preg_replace("/{img\:([0-9]+)[:]?([^}]*)}/ie", "view_image(\$view, '\\1', '\\2')", $view[content]);
-$view[rich_content] = preg_replace("/{이미지\:([0-9]+)[:]?([^}]*)}/ie", "view_image(\$view, '\\1', '\\2')", $view[content]);
+$view[rich_content] = preg_replace_callback("/{이미지\:([0-9]+)[:]?([^}]*)}/i", create_function ('$arg', 'global $view; return "view_image(\'$view\', \'$arg[1]\', \'$arg[2]\')";'), $view[content]);
 
 $is_signature = false;
 $signature = "";

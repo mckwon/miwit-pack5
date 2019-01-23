@@ -58,7 +58,7 @@ $write[wr_content] = conv_content($write[wr_content], $html);
 if (!strstr($write[wr_content], "{이미지:"))// 파일 출력  
     $write[wr_content] = $file_viewer . $write[wr_content]; 
 else
-    $write[wr_content] = preg_replace("/{이미지\:([0-9]+)[:]?([^}]*)}/ie", "view_image(\$view, '\\1', '\\2')", $write[wr_content]);
+    $write[wr_content] = preg_replace_callback("/{이미지\:([0-9]+)[:]?([^}]*)}/i", create_function ('$arg', 'global $view; return "view_image(\'$view\', \'$arg[1]\', \'$arg[2]\')";'), $write[wr_content]);
 
 $write[wr_content] = preg_replace("/\[\<a\s*href\=\"(http|https|ftp)\:\/\/([^[:space:]]+)\.(gif|png|jpg|jpeg|bmp)\"\s*[^\>]*\>.*\<\/a\>\]/iUs",
                         "<img src='$1://$2.$3'>", $write[wr_content]);
